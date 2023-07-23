@@ -15,9 +15,10 @@ impl Acpi {
         let stream = UnixStream::connect("/run/acpid.socket")?;
         let reader = BufReader::new(stream);
 
+        let delay = Duration::from_micros(100);
         let mut last = Instant::now();
         for line in reader.lines().flatten() {
-            if last.elapsed() >= Duration::from_millis(10) {
+            if last.elapsed() >= delay {
                 let event = line.split(" ").collect::<Vec<&str>>();
                 Self::handle(event)?;
                 last = Instant::now();
@@ -58,6 +59,6 @@ impl Acpi {
             }),
             _ => None,
         }
-        .map_or(Ok(()), Manager::send)
+        .map_or(Ok(()), Manager::handle)
     }
 }

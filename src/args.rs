@@ -14,8 +14,8 @@ pub struct Args {
 
 #[derive(Subcommand)]
 pub enum Command {
-    /// Launch manager
-    Start,
+    /// Launch manager daemon
+    Daemon,
     /// Commands to manage systemd
     System {
         #[command(subcommand)]
@@ -36,7 +36,7 @@ pub enum Command {
 impl Display for Command {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Command::Start => write!(f, "start"),
+            Command::Daemon => write!(f, "start"),
             Command::System { operation: op } => write!(f, "system {op}"),
             Command::Brightness { operation: op } => write!(f, "brightness {op}"),
             Command::Volume { operation: op } => write!(f, "volume {op}"),
@@ -49,7 +49,7 @@ impl TryFrom<String> for Command {
     fn try_from(value: String) -> Result<Self, Self::Error> {
         let command = value.split(" ").collect::<Vec<&str>>();
         match command.get(0) {
-            Some(&"start") => Ok(Command::Start),
+            Some(&"start") => Ok(Command::Daemon),
             Some(&"system") => match command.get(1..) {
                 Some(subcommand) => match SystemOp::try_from(subcommand.join(" ")) {
                     Ok(operation) => Ok(Command::System { operation }),

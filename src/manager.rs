@@ -4,76 +4,38 @@ use crate::brightness::Brightness;
 use crate::hypr::Hypr;
 use crate::systemd::System;
 use crate::volume::Volume;
+use crate::wifi::Wifi;
 use anyhow::anyhow;
-use std::io::{Read, Write};
-use std::os::unix::net::{UnixListener, UnixStream};
 
-const SOCKET: &str = "/tmp/emanager.socket";
-
-pub struct Manager {
-    systemd: System,
-    brightness: Brightness,
-    volume: Volume,
-}
+pub struct Manager;
 
 impl Manager {
-    pub fn new() -> Self {
-        Self {
-            systemd: System::new(),
-            brightness: Brightness::new(),
-            volume: Volume::new(),
-        }
-    }
-
-    pub fn start(&mut self) -> anyhow::Result<()> {
+    pub fn daemon() -> anyhow::Result<()> {
         if Self::running() {
             return Err(anyhow!("Manager is already running"));
         }
-        if std::fs::metadata(SOCKET).is_ok() {
-            std::fs::remove_file(SOCKET)?;
-        }
-        let listener = UnixListener::bind(SOCKET)?;
-
         std::thread::scope(|scope| -> anyhow::Result<()> {
-            let handle = scope.spawn(move || self.listen(listener));
-            scope.spawn(move || Acpi::listen());
+            let handle = scope.spawn(move || Acpi::listen());
             scope.spawn(move || Hypr::listen());
+            scope.spawn(move || Wifi::listen());
 
             handle.join().unwrap()
         })
     }
 
-    fn listen(&mut self, listener: UnixListener) -> anyhow::Result<()> {
-        loop {
-            let (mut stream, _) = listener.accept()?;
-            let mut message = String::new();
-            stream.read_to_string(&mut message)?;
-
-            if !message.is_empty() {
-                self.handle(message.try_into()?)?;
-            }
-        }
-    }
-
-    fn handle(&mut self, command: Command) -> anyhow::Result<()> {
+    pub fn handle(command: Command) -> anyhow::Result<()> {
         match command {
-            Command::System { operation } => self.systemd.handle(operation),
-            Command::Brightness { operation } => self.brightness.handle(operation),
-            Command::Volume { operation } => self.volume.handle(operation),
+            Command::System { operation } => System::handle(operation),
+            Command::Brightness { operation } => Brightness::handle(operation),
+            Command::Volume { operation } => Volume::handle(operation),
             _ => Ok(()),
         }
     }
 
-    pub fn send(command: Command) -> anyhow::Result<()> {
-        if !Self::running() {
-            return Err(anyhow!("Manager is not running"));
-        }
-        let mut stream = UnixStream::connect(SOCKET)?;
-        stream.write_all(command.to_string().as_bytes())?;
-        Ok(())
-    }
-
     pub fn running() -> bool {
-        UnixStream::connect(SOCKET).is_ok()
+        let pgrep = std::process::Command::new("pgrep").arg("emanager").output();
+        pgrep.is_ok_and(|output| {
+            String::from_utf8(output.stdout).is_ok_and(|stdout| stdout.lines().count() > 1)
+        })
     }
 }

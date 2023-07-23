@@ -54,10 +54,8 @@ impl Hypr {
     }
 
     pub fn running() -> bool {
-        Command::new("pgrep")
-            .arg("Hyprland")
-            .output()
-            .is_ok_and(|output| !output.stdout.is_empty())
+        let pgrep = Command::new("pgrep").arg("Hyprland").output();
+        pgrep.is_ok_and(|output| !output.stdout.is_empty())
     }
 
     pub fn change_workspace() -> anyhow::Result<()> {
@@ -70,16 +68,13 @@ impl Hypr {
             }
         }
         states.sort_by_key(|workspace| workspace.id);
-        Stater::new("workspaces").write(states)
+        Stater::new("workspaces").write(&states)
     }
 
     pub fn change_color() -> anyhow::Result<()> {
         let color = Self::rand_color();
         Keyword::set("general:col.active_border", format!("rgba({color}ee)"))?;
-        Command::new("eww")
-            .args(["update", &format!("border-color=#{color}")])
-            .output()?;
-        Stater::new("color").write(color)
+        Stater::new("color").write(&color)
     }
 
     pub fn get_color() -> String {

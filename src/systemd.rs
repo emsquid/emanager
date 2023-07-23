@@ -6,38 +6,34 @@ use std::{fmt::Display, process::Command};
 pub struct System;
 
 impl System {
-    pub fn new() -> Self {
-        Self {}
+    pub fn poweroff() -> anyhow::Result<()> {
+        Self::exec("poweroff")
     }
 
-    pub fn poweroff(&self) -> anyhow::Result<()> {
-        self.exec("poweroff")
+    pub fn reboot() -> anyhow::Result<()> {
+        Self::exec("reboot")
     }
 
-    pub fn reboot(&self) -> anyhow::Result<()> {
-        self.exec("reboot")
+    pub fn suspend() -> anyhow::Result<()> {
+        Self::exec("suspend").and_then(|()| Self::lock())
     }
 
-    pub fn suspend(&self) -> anyhow::Result<()> {
-        self.exec("suspend").and_then(|()| self.lock())
-    }
-
-    pub fn lock(&self) -> anyhow::Result<()> {
+    pub fn lock() -> anyhow::Result<()> {
         Command::new("pkill").arg("swaylock").output()?;
         Command::new("swaylock").arg("-f").output()?;
         Ok(())
     }
 
-    pub fn handle(&self, operation: SystemOp) -> anyhow::Result<()> {
+    pub fn handle(operation: SystemOp) -> anyhow::Result<()> {
         match operation {
-            SystemOp::Poweroff => self.poweroff(),
-            SystemOp::Reboot => self.reboot(),
-            SystemOp::Suspend => self.suspend(),
-            SystemOp::Lock => self.lock(),
+            SystemOp::Poweroff => Self::poweroff(),
+            SystemOp::Reboot => Self::reboot(),
+            SystemOp::Suspend => Self::suspend(),
+            SystemOp::Lock => Self::lock(),
         }
     }
 
-    fn exec(&self, command: &str) -> anyhow::Result<()> {
+    fn exec(command: &str) -> anyhow::Result<()> {
         Command::new("systemctl").arg(command).output()?;
         Ok(())
     }

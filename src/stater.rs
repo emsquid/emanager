@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use std::{io::Write, marker::PhantomData};
 
-const DIR: &str = "/home/emanuel/.local/state/em";
+const DIR: &str = "/home/emanuel/.local/state/emanager";
 
 pub struct Stater<T: Serialize + for<'a> Deserialize<'a>> {
     file: String,
@@ -17,9 +17,9 @@ impl<T: Serialize + for<'a> Deserialize<'a>> Stater<T> {
         }
     }
 
-    pub fn write(&self, state: T) -> anyhow::Result<()> {
-        self.truncate()?;
+    pub fn write(&self, state: &T) -> anyhow::Result<()> {
         std::fs::create_dir_all(DIR)?;
+        self.truncate()?;
         let mut file = std::fs::OpenOptions::new()
             .create(true)
             .append(true)
@@ -40,12 +40,14 @@ impl<T: Serialize + for<'a> Deserialize<'a>> Stater<T> {
     }
 
     fn truncate(&self) -> anyhow::Result<()> {
-        let file = std::fs::OpenOptions::new()
+        if let Ok(file) = std::fs::OpenOptions::new()
             .create(true)
             .write(true)
-            .open(&self.file)?;
-        if file.metadata()?.len() > 2_u64.pow(16) {
-            file.set_len(0)?;
+            .open(&self.file)
+        {
+            if file.metadata()?.len() > 2_u64.pow(16) {
+                file.set_len(0)?;
+            }
         }
         Ok(())
     }

@@ -1,19 +1,20 @@
-use crate::hypr::Hypr;
+use crate::{hypr::Hypr, stater::Stater};
 use notify_rust::{Hint, Notification};
 
-#[derive(Clone)]
 pub struct Notifier {
-    id: Option<u32>,
+    stater: Stater<u32>,
 }
 
 impl Notifier {
-    pub fn new() -> Self {
-        Self { id: None }
+    pub fn new(name: &str) -> Self {
+        Self {
+            stater: Stater::new(&format!("{name}.id")),
+        }
     }
 
-    pub fn send(&mut self, summary: &str, body: &str, value: Option<u32>) -> anyhow::Result<()> {
+    pub fn send(&self, summary: &str, body: &str, value: Option<u32>) -> anyhow::Result<()> {
         if Hypr::running() {
-            let color = format!("#{}", Hypr::get_color());
+            let color = format!("#{}ee", Hypr::get_color());
             let mut notif = Notification::new()
                 .summary(summary)
                 .body(body)
@@ -24,11 +25,12 @@ impl Notifier {
                     .hint(Hint::CustomInt("value".to_string(), value as i32))
                     .finalize();
             }
-            self.id = Some(if let Some(id) = self.id {
+            let id = if let Ok(id) = self.stater.read() {
                 notif.id(id).show()?.id()
             } else {
                 notif.show()?.id()
-            });
+            };
+            self.stater.write(&id)?;
         }
         Ok(())
     }

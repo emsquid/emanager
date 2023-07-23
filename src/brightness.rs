@@ -13,105 +13,96 @@ const PROGRAM: &str = "brightnessctl";
 
 #[derive(Serialize, Deserialize)]
 struct BrightnessState {
-    brightness: u32,
+    value: u32,
     icon: String,
 }
 
 impl BrightnessState {
-    pub fn new(brightness: u32, icon: &str) -> Self {
-        Self {
-            brightness,
-            icon: icon.to_string(),
-        }
-    }
-}
-
-pub struct Brightness {
-    notifier: Notifier,
-    stater: Stater<BrightnessState>,
-}
-
-impl Brightness {
-    pub fn new() -> Self {
-        Self {
-            notifier: Notifier::new(),
-            stater: Stater::new("brightness"),
-        }
-    }
-
-    pub fn get(&mut self) -> anyhow::Result<u32> {
-        let value = utf8_to_u32(self.exec(&["get"])?.stdout)?;
-        let percent = value as f32 * 100. / self.max()? as f32;
-        Ok(percent.round() as u32)
-    }
-
-    pub fn set(&mut self, percent: u32) -> anyhow::Result<()> {
-        self.exec(&["set", &format!("{percent}%")])?;
-        self.update(0)
-    }
-
-    pub fn up(&mut self) -> anyhow::Result<()> {
-        let percent = self.get()?;
-        self.set(percent + 5)
-    }
-
-    pub fn down(&mut self) -> anyhow::Result<()> {
-        let percent = self.get()?;
-        self.set(percent - 5)
-    }
-
-    pub fn update(&mut self, delay: u64) -> anyhow::Result<()> {
-        std::thread::sleep(Duration::from_millis(delay));
-        self.notify()?;
-        self.state()
-    }
-
-    pub fn handle(&mut self, operation: BrightnessOp) -> anyhow::Result<()> {
-        match operation {
-            BrightnessOp::Up => self.up(),
-            BrightnessOp::Down => self.down(),
-            BrightnessOp::Set { percent } => self.set(percent),
-            BrightnessOp::Update => self.update(200),
-        }
-    }
-
-    pub fn notify(&mut self) -> anyhow::Result<()> {
-        let value = self.get()?;
-        self.notifier
-            .send("Brightness", &format!("Set to {}%", value), Some(value))
-    }
-
-    pub fn state(&mut self) -> anyhow::Result<()> {
-        let brightness = self.get()?;
-        let icon = if brightness >= 89 {
+    pub fn new(value: u32) -> Self {
+        let icon = if value >= 89 {
             " "
-        } else if brightness >= 78 {
+        } else if value >= 78 {
             " "
-        } else if brightness >= 67 {
+        } else if value >= 67 {
             " "
-        } else if brightness >= 56 {
+        } else if value >= 56 {
             " "
-        } else if brightness >= 45 {
+        } else if value >= 45 {
             " "
-        } else if brightness >= 34 {
+        } else if value >= 34 {
             " "
-        } else if brightness >= 23 {
+        } else if value >= 23 {
             " "
-        } else if brightness >= 12 {
+        } else if value >= 12 {
             " "
         } else {
             " "
-        };
-        let state = BrightnessState::new(brightness, icon);
-        self.stater.write(state)
+        }
+        .to_string();
+        Self { value, icon }
     }
 
-    fn max(&mut self) -> anyhow::Result<u32> {
-        let value = utf8_to_u32(self.exec(&["max"])?.stdout)?;
+    pub fn notify(&self) -> anyhow::Result<()> {
+        Notifier::new("brightness").send(
+            "Brightness",
+            &format!("Set to {}%", self.value),
+            Some(self.value),
+        )
+    }
+
+    pub fn state(&self) -> anyhow::Result<()> {
+        Stater::new("brightness").write(self)
+    }
+}
+
+pub struct Brightness;
+
+impl Brightness {
+    pub fn get() -> anyhow::Result<u32> {
+        let value = utf8_to_u32(Self::exec(&["get"])?.stdout)?;
+        let percent = value as f32 * 100. / Self::max()? as f32;
+        Ok(percent.round() as u32)
+    }
+
+    pub fn set(percent: u32) -> anyhow::Result<()> {
+        Self::exec(&["set", &format!("{percent}%")])?;
+        Self::update(0)
+    }
+
+    pub fn up() -> anyhow::Result<()> {
+        Self::exec(&["set", "+5%"])?;
+        Self::update(0)
+    }
+
+    pub fn down() -> anyhow::Result<()> {
+        Self::exec(&["set", "5%-"])?;
+        Self::update(0)
+    }
+
+    pub fn update(delay: u64) -> anyhow::Result<()> {
+        if delay != 0 {
+            std::thread::sleep(Duration::from_millis(delay));
+        }
+        let state = BrightnessState::new(Self::get()?);
+        state.notify()?;
+        state.state()
+    }
+
+    pub fn handle(operation: BrightnessOp) -> anyhow::Result<()> {
+        match operation {
+            BrightnessOp::Up => Self::up(),
+            BrightnessOp::Down => Self::down(),
+            BrightnessOp::Set { percent } => Self::set(percent),
+            BrightnessOp::Update => Self::update(200),
+        }
+    }
+
+    fn max() -> anyhow::Result<u32> {
+        let value = utf8_to_u32(Self::exec(&["max"])?.stdout)?;
         Ok(value)
     }
 
-    fn exec(&mut self, args: &[impl AsRef<OsStr>]) -> anyhow::Result<Output> {
+    fn exec(args: &[impl AsRef<OsStr>]) -> anyhow::Result<Output> {
         let output = Command::new(PROGRAM).args(args).output()?;
         Ok(output)
     }

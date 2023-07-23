@@ -10,13 +10,14 @@ mod stater;
 mod systemd;
 mod utils;
 mod volume;
+mod wifi;
 
 fn main() {
     let args = args::Args::parse();
 
     let result = match args.command {
-        args::Command::Start => manager::Manager::new().start(),
-        _ => manager::Manager::send(args.command),
+        args::Command::Daemon => manager::Manager::daemon(),
+        _ => manager::Manager::handle(args.command),
     };
 
     if let Err(e) = result {
