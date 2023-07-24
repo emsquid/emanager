@@ -45,7 +45,7 @@ impl Hypr {
             .collect::<Vec<WorkspaceState>>();
         for id in 1..=5 {
             if states.iter().all(|state| state.id != id) {
-                states.push(WorkspaceState::new(id, 0, false))
+                states.push(WorkspaceState::new(id, 0, false));
             }
         }
         states.sort_by_key(|workspace| workspace.id);
@@ -67,12 +67,12 @@ impl Hypr {
     }
 
     fn rand_color() -> String {
-        COLORS
+        (*COLORS
             .iter()
-            .filter(|color| color.to_string() != Self::get_color())
+            .filter(|color| (**color).to_string() != Self::get_color())
             .choose(&mut rand::thread_rng())
-            .unwrap()
-            .to_string()
+            .unwrap())
+        .to_string()
     }
 }
 
@@ -104,7 +104,7 @@ impl WorkspaceState {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, ValueEnum)]
+#[derive(Serialize, Deserialize, Copy, Clone, ValueEnum)]
 pub enum Layout {
     Fr,
     Us,

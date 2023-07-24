@@ -19,8 +19,8 @@ impl Acpi {
         let mut last = Instant::now();
         for line in reader.lines().flatten() {
             if last.elapsed() >= delay {
-                let event = line.split(" ").collect::<Vec<&str>>();
-                Self::handle(event)?;
+                let event = line.split(' ').collect::<Vec<&str>>();
+                Self::handle(&event)?;
                 last = Instant::now();
             }
         }
@@ -28,33 +28,33 @@ impl Acpi {
         Ok(())
     }
 
-    fn handle(event: Vec<&str>) -> anyhow::Result<()> {
-        match event[0] {
-            "button/lid" => match event[2] {
-                "close" => Some(Command::System {
+    fn handle(event: &[&str]) -> anyhow::Result<()> {
+        match event.get(0) {
+            Some(&"button/lid") => match event.get(2) {
+                Some(&"close") => Some(Command::System {
                     operation: SystemOp::Suspend,
                 }),
                 _ => None,
             },
-            "button/sleep" => Some(Command::System {
+            Some(&"button/sleep") => Some(Command::System {
                 operation: SystemOp::Suspend,
             }),
-            "video/brightnessup" => Some(Command::Brightness {
-                operation: BrightnessOp::Up,
+            Some(&"video/brightnessup") => Some(Command::Brightness {
+                operation: BrightnessOp::Up { percent: 5 },
             }),
-            "video/brightnessdown" => Some(Command::Brightness {
-                operation: BrightnessOp::Down,
+            Some(&"video/brightnessdown") => Some(Command::Brightness {
+                operation: BrightnessOp::Down { percent: 5 },
             }),
-            "button/volumeup" => Some(Command::Volume {
-                operation: VolumeOp::Up,
+            Some(&"button/volumeup") => Some(Command::Volume {
+                operation: VolumeOp::Up { percent: 5 },
             }),
-            "button/volumedown" => Some(Command::Volume {
-                operation: VolumeOp::Down,
+            Some(&"button/volumedown") => Some(Command::Volume {
+                operation: VolumeOp::Down { percent: 5 },
             }),
-            "button/mute" => Some(Command::Volume {
+            Some(&"button/mute") => Some(Command::Volume {
                 operation: VolumeOp::Mute,
             }),
-            "jack/headphone" => Some(Command::Volume {
+            Some(&"jack/headphone") => Some(Command::Volume {
                 operation: VolumeOp::Update,
             }),
             _ => None,

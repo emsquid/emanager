@@ -1,4 +1,4 @@
-use clap::Subcommand;
+use clap::{Subcommand, ValueEnum};
 use serde::Serialize;
 use std::process::Command;
 use std::sync::Arc;
@@ -29,10 +29,21 @@ impl System {
         Ok(())
     }
 
-    pub fn inhibit() -> anyhow::Result<()> {
-        let _handle = Self::call("Inhibit", &("idle", "emanager", "Idle inhibitor", "block"))?;
-        loop {
-            std::thread::sleep(Duration::from_secs(2_u64.pow(8)));
+    pub fn inhibit(operation: InhibitOp) -> anyhow::Result<()> {
+        match operation {
+            InhibitOp::On => {
+                let _handle =
+                    Self::call("Inhibit", &("idle", "emanager", "Idle inhibitor", "block"))?;
+                loop {
+                    std::thread::sleep(Duration::from_secs(2_u64.pow(8)));
+                }
+            }
+            InhibitOp::Off => {
+                Command::new("pkill")
+                    .args(["-f", "emanager system inhibit on"])
+                    .output()?;
+                Ok(())
+            }
         }
     }
 
@@ -42,7 +53,7 @@ impl System {
             SystemOp::Reboot => Self::reboot(),
             SystemOp::Suspend => Self::suspend(),
             SystemOp::Lock => Self::lock(),
-            SystemOp::Inhibit => Self::inhibit(),
+            SystemOp::Inhibit { operation } => Self::inhibit(operation),
         }
     }
 
@@ -67,8 +78,17 @@ pub enum SystemOp {
     Reboot,
     /// Suspend system
     Suspend,
-    /// Lock system
+    /// Lock session
     Lock,
     /// Inhibit idle
-    Inhibit,
+    Inhibit {
+        #[arg(value_enum)]
+        operation: InhibitOp,
+    },
+}
+
+#[derive(Copy, Clone, ValueEnum)]
+pub enum InhibitOp {
+    On,
+    Off,
 }

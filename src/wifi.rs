@@ -17,7 +17,7 @@ impl Wifi {
             if Some(&state) != current.as_ref() {
                 state.notify(current)?;
                 state.log()?;
-                current = Some(state)
+                current = Some(state);
             }
             std::thread::sleep(Duration::from_secs(2));
         }
@@ -28,14 +28,13 @@ impl Wifi {
         Ok(String::from_utf8(output.stdout)?
             .lines()
             .map(|line| {
-                let info = line.split(":").collect::<Vec<&str>>();
+                let info = line.split(':').collect::<Vec<&str>>();
                 let active = info.get(0).is_some_and(|i| i == &"yes");
                 let ssid = info.get(1).unwrap_or(&"");
-                let signal = info[2].parse::<u32>().unwrap_or(0);
+                let signal = info.get(2).unwrap_or(&"0").parse::<u32>().unwrap_or(0);
                 WifiState::new(active, ssid, signal)
             })
-            .filter(|state| state.active)
-            .next()
+            .find(|state| state.active)
             .unwrap_or(WifiState::new(false, "", 0)))
     }
 

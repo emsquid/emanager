@@ -24,7 +24,7 @@ impl Volume {
     pub fn get() -> anyhow::Result<u32> {
         if Self::working()? {
             let string = String::from_utf8(Self::exec(&["get-volume", ID])?.stdout)?;
-            let volume = string.split(" ").collect::<Vec<&str>>()[1]
+            let volume = string.split(' ').collect::<Vec<&str>>()[1]
                 .trim()
                 .parse::<f32>()?;
             Ok((volume * 100.).round() as u32)
@@ -40,16 +40,16 @@ impl Volume {
         Self::update(0)
     }
 
-    pub fn up() -> anyhow::Result<()> {
+    pub fn up(percent: u32) -> anyhow::Result<()> {
         if !Self::muted()? {
-            Self::exec(&["set-volume", ID, "5%+", "-l", "1"])?;
+            Self::exec(&["set-volume", ID, &format!("{percent}%+"), "-l", "1"])?;
         }
         Self::update(0)
     }
 
-    pub fn down() -> anyhow::Result<()> {
+    pub fn down(percent: u32) -> anyhow::Result<()> {
         if !Self::muted()? {
-            Self::exec(&["set-volume", ID, "5%-"])?;
+            Self::exec(&["set-volume", ID, &format!("{percent}%-")])?;
         }
         Self::update(0)
     }
@@ -71,8 +71,8 @@ impl Volume {
 
     pub fn handle(operation: VolumeOp) -> anyhow::Result<()> {
         match operation {
-            VolumeOp::Up => Self::up(),
-            VolumeOp::Down => Self::down(),
+            VolumeOp::Up { percent } => Self::up(percent),
+            VolumeOp::Down { percent } => Self::down(percent),
             VolumeOp::Set { percent } => Self::set(percent),
             VolumeOp::Mute => Self::mute(),
             VolumeOp::Update => Self::update(200),
@@ -87,10 +87,16 @@ impl Volume {
 
 #[derive(Copy, Clone, Subcommand)]
 pub enum VolumeOp {
-    /// Increase by 5%
-    Up,
-    /// Decrease by 5%
-    Down,
+    /// Increase by percentage
+    Up {
+        #[arg(default_value_t = 5, value_parser = clap::value_parser!(u32).range(0..=100))]
+        percent: u32,
+    },
+    /// Decrease by percentage
+    Down {
+        #[arg(default_value_t = 5, value_parser = clap::value_parser!(u32).range(0..=100))]
+        percent: u32,
+    },
     /// Set to a percentage
     Set {
         #[arg(value_parser = clap::value_parser!(u32).range(0..=100))]

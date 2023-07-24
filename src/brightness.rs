@@ -23,13 +23,13 @@ impl Brightness {
         Self::update(0)
     }
 
-    pub fn up() -> anyhow::Result<()> {
-        Self::exec(&["set", "+5%"])?;
+    pub fn up(percent: u32) -> anyhow::Result<()> {
+        Self::exec(&["set", &format!("+{percent}%")])?;
         Self::update(0)
     }
 
-    pub fn down() -> anyhow::Result<()> {
-        Self::exec(&["set", "5%-"])?;
+    pub fn down(percent: u32) -> anyhow::Result<()> {
+        Self::exec(&["set", &format!("{percent}%-")])?;
         Self::update(0)
     }
 
@@ -44,8 +44,8 @@ impl Brightness {
 
     pub fn handle(operation: BrightnessOp) -> anyhow::Result<()> {
         match operation {
-            BrightnessOp::Up => Self::up(),
-            BrightnessOp::Down => Self::down(),
+            BrightnessOp::Up { percent } => Self::up(percent),
+            BrightnessOp::Down { percent } => Self::down(percent),
             BrightnessOp::Set { percent } => Self::set(percent),
             BrightnessOp::Update => Self::update(200),
         }
@@ -64,10 +64,16 @@ impl Brightness {
 
 #[derive(Copy, Clone, Subcommand)]
 pub enum BrightnessOp {
-    /// Increase by 5%
-    Up,
-    /// Decrease by 5%
-    Down,
+    /// Increase by percentage
+    Up {
+        #[arg(default_value_t = 5, value_parser = clap::value_parser!(u32).range(0..=100))]
+        percent: u32,
+    },
+    /// Decrease by percentage
+    Down {
+        #[arg(default_value_t = 5, value_parser = clap::value_parser!(u32).range(0..=100))]
+        percent: u32,
+    },
     /// Set to a percentage
     Set {
         #[arg(value_parser = clap::value_parser!(u32).range(0..=100))]

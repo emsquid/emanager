@@ -16,10 +16,10 @@ impl Manager {
             return Err(anyhow!("Manager is already running"));
         }
         std::thread::scope(|scope| -> anyhow::Result<()> {
-            let handle = scope.spawn(move || Acpi::listen());
-            scope.spawn(move || Battery::listen());
-            scope.spawn(move || Hypr::listen());
-            scope.spawn(move || Wifi::listen());
+            let handle = scope.spawn(|| Acpi::listen());
+            scope.spawn(|| Battery::listen());
+            scope.spawn(|| Hypr::listen());
+            scope.spawn(|| Wifi::listen());
 
             handle.join().unwrap()
         })
