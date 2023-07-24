@@ -25,6 +25,7 @@ Commands:
   system      Commands to manage systemd
   brightness  Commands to manage backlight
   volume      Commands to manage volume
+  layout      Change layout
   help        Print this message or the help of the given subcommand(s)
 
 Options:

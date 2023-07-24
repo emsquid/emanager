@@ -1,12 +1,13 @@
 use crate::logger::Logger;
 use clap::ValueEnum;
-use hyprland::data::{Workspace, Workspaces};
-use hyprland::event_listener::EventListener;
+use hyprland::data::{Client, Workspace, Workspaces};
 use hyprland::keyword::Keyword;
-use hyprland::shared::{HyprData, HyprDataActive};
+use hyprland::shared::{HyprData, HyprDataActive, HyprDataActiveOptional};
 use rand::seq::IteratorRandom;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
+use std::io::{BufRead, BufReader};
+use std::os::unix::net::UnixStream;
 use std::process::Command;
 use std::time::Duration;
 
@@ -22,11 +23,20 @@ impl Hypr {
 
         Self::change_workspace()?;
 
-        let mut listener = EventListener::new();
-        listener.add_workspace_change_handler(|_| Self::change_workspace().unwrap());
-        listener.add_active_window_change_handler(|_| Self::change_color().unwrap());
+        let stream = Self::stream()?;
+        let reader = BufReader::new(stream);
+        let mut current = Self::get_active_address()?;
+        for line in reader.lines().flatten() {
+            let address = Self::get_active_address()?;
+            if line.starts_with("workspace") {
+                Self::change_workspace()?;
+            } else if line.starts_with("activewindowv2") && address != current {
+                Self::change_color()?;
+                current = address;
+            }
+        }
 
-        Ok(listener.start_listener()?)
+        Ok(())
     }
 
     pub fn running() -> bool {
@@ -64,6 +74,17 @@ impl Hypr {
             Ok(color) => color,
             Err(_) => "7aa2f7".to_string(),
         }
+    }
+
+    fn get_active_address() -> anyhow::Result<Option<Vec<u8>>> {
+        Ok(Client::get_active()?.map(|client| client.address.as_vec()))
+    }
+
+    fn stream() -> anyhow::Result<UnixStream> {
+        let signature = std::env::var("HYPRLAND_INSTANCE_SIGNATURE")?;
+        Ok(UnixStream::connect(format!(
+            "/tmp/hypr/{signature}/.socket2.sock"
+        ))?)
     }
 
     fn rand_color() -> String {
