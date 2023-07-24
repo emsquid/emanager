@@ -2,12 +2,13 @@ use clap::Parser;
 
 mod acpi;
 mod args;
+mod battery;
 mod brightness;
 mod hypr;
 mod manager;
 mod notifier;
-mod stater;
-mod systemd;
+mod logger;
+mod system;
 mod utils;
 mod volume;
 mod wifi;

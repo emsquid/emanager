@@ -4,12 +4,12 @@ use std::{io::Write, marker::PhantomData};
 
 const DIR: &str = "/home/emanuel/.local/state/emanager";
 
-pub struct Stater<T: Serialize + for<'a> Deserialize<'a>> {
+pub struct Logger<T: Serialize + for<'a> Deserialize<'a>> {
     file: String,
     phantom: PhantomData<T>,
 }
 
-impl<T: Serialize + for<'a> Deserialize<'a>> Stater<T> {
+impl<T: Serialize + for<'a> Deserialize<'a>> Logger<T> {
     pub fn new(name: &str) -> Self {
         Self {
             file: format!("{DIR}/{name}"),

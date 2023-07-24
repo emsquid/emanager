@@ -1,63 +1,13 @@
+use crate::logger::Logger;
 use crate::notifier::Notifier;
-use crate::stater::Stater;
-use anyhow::anyhow;
 use clap::Subcommand;
 use serde::{Deserialize, Serialize};
 use std::ffi::OsStr;
-use std::fmt::Display;
 use std::process::{Command, Output};
 use std::time::Duration;
 
 const PROGRAM: &str = "wpctl";
 const ID: &str = "@DEFAULT_AUDIO_SINK@";
-
-#[derive(Serialize, Deserialize)]
-struct VolumeState {
-    value: u32,
-    muted: bool,
-    working: bool,
-    icon: String,
-}
-
-impl VolumeState {
-    pub fn new(value: u32, muted: bool, working: bool) -> Self {
-        let icon = if !working || muted {
-            "󰝟 "
-        } else if value >= 40 {
-            "󰕾 "
-        } else if value >= 20 {
-            "󰖀 "
-        } else {
-            "󰕿 "
-        }
-        .to_string();
-        Self {
-            value,
-            muted,
-            working,
-            icon,
-        }
-    }
-
-    pub fn notify(&self) -> anyhow::Result<()> {
-        let notifier = Notifier::new("volume");
-        if !self.working {
-            notifier.send("Volume", "No output", None)
-        } else if self.muted {
-            notifier.send("Volume", "Muted", None)
-        } else {
-            notifier.send(
-                "Volume",
-                &format!("Set to {}%", self.value),
-                Some(self.value),
-            )
-        }
-    }
-
-    pub fn state(&self) -> anyhow::Result<()> {
-        Stater::new("volume").write(self)
-    }
-}
 
 pub struct Volume;
 
@@ -116,7 +66,7 @@ impl Volume {
         let (working, muted, value) = (Self::working()?, Self::muted()?, Self::get()?);
         let state = VolumeState::new(value, muted, working);
         state.notify()?;
-        state.state()
+        state.log()
     }
 
     pub fn handle(operation: VolumeOp) -> anyhow::Result<()> {
@@ -152,33 +102,51 @@ pub enum VolumeOp {
     Update,
 }
 
-impl Display for VolumeOp {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            VolumeOp::Up => write!(f, "up"),
-            VolumeOp::Down => write!(f, "down"),
-            VolumeOp::Set { percent: value } => write!(f, "set {value}"),
-            VolumeOp::Mute => write!(f, "mute"),
-            VolumeOp::Update => write!(f, "update"),
+#[derive(Serialize, Deserialize)]
+struct VolumeState {
+    value: u32,
+    muted: bool,
+    working: bool,
+    icon: String,
+}
+
+impl VolumeState {
+    pub fn new(value: u32, muted: bool, working: bool) -> Self {
+        let icon = if !working || muted {
+            "󰝟 "
+        } else if value >= 40 {
+            "󰕾 "
+        } else if value >= 20 {
+            "󰖀 "
+        } else {
+            "󰕿 "
+        }
+        .to_string();
+        Self {
+            value,
+            muted,
+            working,
+            icon,
         }
     }
-}
-impl TryFrom<String> for VolumeOp {
-    type Error = anyhow::Error;
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        let operation = value.split(" ").collect::<Vec<&str>>();
-        match operation.get(0) {
-            Some(&"up") => Ok(VolumeOp::Up),
-            Some(&"down") => Ok(VolumeOp::Down),
-            Some(&"set") => match operation.get(1) {
-                Some(percent) => Ok(VolumeOp::Set {
-                    percent: percent.parse()?,
-                }),
-                None => Err(anyhow!("Missing percent for operation set")),
-            },
-            Some(&"mute") => Ok(VolumeOp::Mute),
-            Some(&"update") => Ok(VolumeOp::Update),
-            _ => Err(anyhow!("Unknown operation for volume: {value}")),
+
+    pub fn notify(&self) -> anyhow::Result<()> {
+        let notifier = Notifier::new("volume");
+        if !self.working {
+            notifier.send("Volume", "No output", None, None)
+        } else if self.muted {
+            notifier.send("Volume", "Muted", None, None)
+        } else {
+            notifier.send(
+                "Volume",
+                &format!("Set to {}%", self.value),
+                None,
+                Some(self.value),
+            )
         }
+    }
+
+    pub fn log(&self) -> anyhow::Result<()> {
+        Logger::new("volume").write(self)
     }
 }

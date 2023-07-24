@@ -1,59 +1,13 @@
+use crate::logger::Logger;
 use crate::notifier::Notifier;
-use crate::stater::Stater;
 use crate::utils::utf8_to_u32;
-use anyhow::anyhow;
 use clap::Subcommand;
 use serde::{Deserialize, Serialize};
 use std::ffi::OsStr;
-use std::fmt::Display;
 use std::process::{Command, Output};
 use std::time::Duration;
 
 const PROGRAM: &str = "brightnessctl";
-
-#[derive(Serialize, Deserialize)]
-struct BrightnessState {
-    value: u32,
-    icon: String,
-}
-
-impl BrightnessState {
-    pub fn new(value: u32) -> Self {
-        let icon = if value >= 89 {
-            " "
-        } else if value >= 78 {
-            " "
-        } else if value >= 67 {
-            " "
-        } else if value >= 56 {
-            " "
-        } else if value >= 45 {
-            " "
-        } else if value >= 34 {
-            " "
-        } else if value >= 23 {
-            " "
-        } else if value >= 12 {
-            " "
-        } else {
-            " "
-        }
-        .to_string();
-        Self { value, icon }
-    }
-
-    pub fn notify(&self) -> anyhow::Result<()> {
-        Notifier::new("brightness").send(
-            "Brightness",
-            &format!("Set to {}%", self.value),
-            Some(self.value),
-        )
-    }
-
-    pub fn state(&self) -> anyhow::Result<()> {
-        Stater::new("brightness").write(self)
-    }
-}
 
 pub struct Brightness;
 
@@ -85,7 +39,7 @@ impl Brightness {
         }
         let state = BrightnessState::new(Self::get()?);
         state.notify()?;
-        state.state()
+        state.log()
     }
 
     pub fn handle(operation: BrightnessOp) -> anyhow::Result<()> {
@@ -123,31 +77,47 @@ pub enum BrightnessOp {
     Update,
 }
 
-impl Display for BrightnessOp {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            BrightnessOp::Up => write!(f, "up"),
-            BrightnessOp::Down => write!(f, "down"),
-            BrightnessOp::Set { percent: value } => write!(f, "set {value}"),
-            BrightnessOp::Update => write!(f, "update"),
-        }
-    }
+#[derive(Serialize, Deserialize)]
+struct BrightnessState {
+    value: u32,
+    icon: String,
 }
-impl TryFrom<String> for BrightnessOp {
-    type Error = anyhow::Error;
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        let operation = value.split(" ").collect::<Vec<&str>>();
-        match operation.get(0) {
-            Some(&"up") => Ok(BrightnessOp::Up),
-            Some(&"down") => Ok(BrightnessOp::Down),
-            Some(&"set") => match operation.get(1) {
-                Some(percent) => Ok(BrightnessOp::Set {
-                    percent: percent.parse()?,
-                }),
-                None => Err(anyhow!("Missing percent for operation set")),
-            },
-            Some(&"update") => Ok(BrightnessOp::Update),
-            _ => Err(anyhow!("Unknown operation for brightness: {value}")),
+
+impl BrightnessState {
+    pub fn new(value: u32) -> Self {
+        let icon = if value >= 89 {
+            " "
+        } else if value >= 78 {
+            " "
+        } else if value >= 67 {
+            " "
+        } else if value >= 56 {
+            " "
+        } else if value >= 45 {
+            " "
+        } else if value >= 34 {
+            " "
+        } else if value >= 23 {
+            " "
+        } else if value >= 12 {
+            " "
+        } else {
+            " "
         }
+        .to_string();
+        Self { value, icon }
+    }
+
+    pub fn notify(&self) -> anyhow::Result<()> {
+        Notifier::new("brightness").send(
+            "Brightness",
+            &format!("Set to {}%", self.value),
+            None,
+            Some(self.value),
+        )
+    }
+
+    pub fn log(&self) -> anyhow::Result<()> {
+        Logger::new("brightness").write(self)
     }
 }

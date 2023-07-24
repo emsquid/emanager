@@ -1,8 +1,9 @@
 use crate::acpi::Acpi;
 use crate::args::Command;
+use crate::battery::Battery;
 use crate::brightness::Brightness;
 use crate::hypr::Hypr;
-use crate::systemd::System;
+use crate::system::System;
 use crate::volume::Volume;
 use crate::wifi::Wifi;
 use anyhow::anyhow;
@@ -16,6 +17,7 @@ impl Manager {
         }
         std::thread::scope(|scope| -> anyhow::Result<()> {
             let handle = scope.spawn(move || Acpi::listen());
+            scope.spawn(move || Battery::listen());
             scope.spawn(move || Hypr::listen());
             scope.spawn(move || Wifi::listen());
 
@@ -28,12 +30,15 @@ impl Manager {
             Command::System { operation } => System::handle(operation),
             Command::Brightness { operation } => Brightness::handle(operation),
             Command::Volume { operation } => Volume::handle(operation),
+            Command::Layout { layout } => Hypr::change_layout(layout),
             _ => Ok(()),
         }
     }
 
     pub fn running() -> bool {
-        let pgrep = std::process::Command::new("pgrep").arg("emanager").output();
+        let pgrep = std::process::Command::new("pgrep")
+            .args(["-f", "emanager daemon"])
+            .output();
         pgrep.is_ok_and(|output| {
             String::from_utf8(output.stdout).is_ok_and(|stdout| stdout.lines().count() > 1)
         })

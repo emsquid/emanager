@@ -1,7 +1,7 @@
 use crate::args::Command;
 use crate::brightness::BrightnessOp;
 use crate::manager::Manager;
-use crate::systemd::SystemOp;
+use crate::system::SystemOp;
 use crate::volume::VolumeOp;
 use std::io::{BufRead, BufReader};
 use std::os::unix::net::UnixStream;
