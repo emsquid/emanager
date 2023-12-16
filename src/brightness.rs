@@ -47,7 +47,7 @@ impl Brightness {
             BrightnessOp::Up { percent } => Self::up(percent),
             BrightnessOp::Down { percent } => Self::down(percent),
             BrightnessOp::Set { percent } => Self::set(percent),
-            BrightnessOp::Update => Self::update(200),
+            BrightnessOp::Update => Self::update(500),
         }
     }
 

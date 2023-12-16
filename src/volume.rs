@@ -75,7 +75,7 @@ impl Volume {
             VolumeOp::Down { percent } => Self::down(percent),
             VolumeOp::Set { percent } => Self::set(percent),
             VolumeOp::Mute => Self::mute(),
-            VolumeOp::Update => Self::update(200),
+            VolumeOp::Update => Self::update(500),
         }
     }
 
